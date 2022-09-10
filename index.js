@@ -17,11 +17,40 @@ async function run(){
     try{
         await client.connect();
         const serviceCollection = client.db("my_mern_portal").collection("services");
+        const bookingCollection = client.db("my_mern_portal").collection("bookings");
         app.get('/service', async (req, res)=>{
             const query = {};
         const cursor = serviceCollection.find(query);
         const services = await cursor.toArray();
         res.send(services);
+        });
+
+        app.post('/booking', async (req, res)=>{
+          const booking = req.body;
+          const query = {treatment: booking.treatment, patient:booking.patient, slot:booking.slot, date:booking.date};
+          const exists = await bookingCollection.findOne(query);
+          if(exists){
+            return res.send({success:false, exists})
+          }
+          const result = await bookingCollection.insertOne(booking);
+          res.send({success:true, result});
+        });
+
+        app.get('/available', async (req, res)=>{
+          const date = req.query.date;
+          // step 1
+          const services = await serviceCollection.find().toArray();
+          // step 2 
+          const query = {date:date};
+          const bookings = await bookingCollection.find(query).toArray();
+          // step 3
+          services.forEach(service=>{
+            const serviceBookings = bookings.filter(booking=>booking.treatment===service.name);
+            const bookedSlots = serviceBookings.map(book=>book.slot);
+            const available = service.slots.filter(slot=>!bookedSlots.includes(slot));
+            service.slots = available;
+          })
+          res.send(services);
         })
     }
     finally{
