@@ -43,6 +43,7 @@ async function run() {
       .db("my_mern_portal")
       .collection("bookings");
     const userCollection = client.db("my_mern_portal").collection("users");
+    const doctorCollection = client.db("my_mern_portal").collection("doctors");
 
     app.get("/service", async (req, res) => {
       const query = {};
@@ -149,7 +150,11 @@ async function run() {
         return res.status(403).send({ message: "forbidden access" });
       }
     });
-
+    app.post('/doctor',async(req,res)=>{
+      const doctor = req.body;
+      const result = await doctorCollection.insertOne(doctor);
+      res.send(result)
+    })
     app.post("/booking", async (req, res) => {
       const booking = req.body;
       const query = {
