@@ -18,7 +18,7 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
-function verifyJWT(req, res, next) {
+function varifyJWT(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return res.status(401).send({ message: "UnAuthorized access" });
@@ -45,40 +45,47 @@ async function run() {
     const userCollection = client.db("my_mern_portal").collection("users");
     const doctorCollection = client.db("my_mern_portal").collection("doctors");
 
+    const varifyAdmin = async (req, res, next) => {
+      const applier = req.decoded.email;
+      const applierAccount = await userCollection.findOne({ email: applier });
+      if (applierAccount.role === "admin") {
+        next();
+      } else {
+        res.status(403).send({ message: "Forbidden access" });
+      }
+    };
     app.get("/service", async (req, res) => {
       const query = {};
-      const cursor = serviceCollection.find(query).project({name: 1});
+      const cursor = serviceCollection.find(query).project({ name: 1 });
       const services = await cursor.toArray();
       res.send(services);
     });
 
-    app.get("/user", verifyJWT, async (req, res) => {
+    app.get('/doctor', varifyJWT, varifyAdmin, async(req,res)=>{
+      const doctors = await doctorCollection.find().toArray();
+      res.send(doctors);
+    })
+
+    app.get("/user", varifyJWT, async (req, res) => {
       const users = await userCollection.find().toArray();
       res.send(users);
     });
 
-    app.get('/admin/:email', async(req, res) =>{
+    app.get("/admin/:email", async (req, res) => {
       const email = req.params.email;
-      const user = await userCollection.findOne({email: email});
-      const isAdmin = user.role === 'admin';
-      res.send({admin: isAdmin})
-    })
+      const user = await userCollection.findOne({ email: email });
+      const isAdmin = user.role === "admin";
+      res.send({ admin: isAdmin });
+    });
 
-    app.put("/user/admin/:email", verifyJWT, async (req, res) => {
+    app.put("/user/admin/:email", varifyJWT, async (req, res) => {
       const email = req.params.email;
-      const applier = req.decoded.email;
-      const applierAccount = await userCollection.findOne({email: applier});
-      if(applierAccount.role === 'admin'){
-        const filter = { email: email };
-        const updateDoc = {
-          $set: { role: "admin" },
-        };
-        const result = await userCollection.updateOne(filter, updateDoc);
-        res.send(result);
-      }
-      else{
-        res.status(403).send({message:"Forbidden access"});
-      }
+      const filter = { email: email };
+      const updateDoc = {
+        $set: { role: "admin" },
+      };
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
     });
 
     app.put("/user/:email", async (req, res) => {
@@ -139,7 +146,7 @@ async function run() {
      * app.delete('/booking/:id) //
      */
 
-    app.get("/booking", verifyJWT, async (req, res) => {
+    app.get("/booking", varifyJWT, async (req, res) => {
       const patient = req.query.patient;
       const decodedEmail = req.decoded.email;
       if (patient === decodedEmail) {
@@ -150,11 +157,11 @@ async function run() {
         return res.status(403).send({ message: "forbidden access" });
       }
     });
-    app.post('/doctor',async(req,res)=>{
+    app.post("/doctor", varifyJWT, varifyAdmin, async (req, res) => {
       const doctor = req.body;
       const result = await doctorCollection.insertOne(doctor);
-      res.send(result)
-    })
+      res.send(result);
+    });
     app.post("/booking", async (req, res) => {
       const booking = req.body;
       const query = {
