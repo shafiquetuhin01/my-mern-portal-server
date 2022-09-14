@@ -162,6 +162,12 @@ async function run() {
       const result = await doctorCollection.insertOne(doctor);
       res.send(result);
     });
+    app.delete("/doctor/:email", varifyJWT, varifyAdmin, async (req, res) => {
+      const email = req.params.email;
+      const filter = {email: email};
+      const result = await doctorCollection.deleteOne(filter);
+      res.send(result);
+    });
     app.post("/booking", async (req, res) => {
       const booking = req.body;
       const query = {
