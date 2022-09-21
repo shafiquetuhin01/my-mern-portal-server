@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const jwt = require("jsonwebtoken");
 require("dotenv").config();
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 var nodemailer = require("nodemailer");
 const mg = require("nodemailer-mailgun-transport");
 
@@ -218,6 +218,13 @@ async function run() {
       const doctors = await doctorCollection.find().toArray();
       res.send(doctors);
     });
+
+    app.get('/booking/:id', verifyJWT, async (req, res)=>{
+      const id = req.params.id;
+      const query = {_id: ObjectId(id)};
+      const booking = await bookingCollection.findOne(query);
+      res.send(booking);
+    })
 
     app.post("/doctor", verifyJWT, verifyAdmin, async (req, res) => {
       const doctor = req.body;
