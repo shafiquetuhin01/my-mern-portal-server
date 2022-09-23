@@ -74,6 +74,36 @@ function sendAppointmentEmail(booking) {
     }
   });
 }
+function sendPaymentConfirmationEmail(booking) {
+  const { patient, patientName, treatment, date, slot } = booking;
+
+  var email = {
+    from: "sfqtuhin04@gmail.com",
+    to: patient,
+    subject: `We have received your payment for ${treatment} is on ${date} at ${slot} and it is Confirmed.`,
+    text: `Your payment for ${treatment} is on ${date} at ${slot} is Confirmed`,
+    html: `
+      <div>
+        <p> Hello ${patientName}, </p>
+        <h3 className="text-green-500">Thanks for your nice payment</h3>
+        <h3>We received your payment</h3>
+        <p>Looking forward to seeing you on ${date} at ${slot}.</p>
+        <h3>Our Address</h3>
+        <p>Andor Killa Bandorban</p>
+        <p>Bangladesh</p>
+        <a href="https://web.programming-hero.com/">unsubscribe</a>
+      </div>
+    `,
+  };
+
+  nodemailerMailgun.sendMail(email, (err, info) => {
+    if (err) {
+      console.log(err);
+    } else {
+      console.log(info);
+    }
+  });
+}
 
 async function run() {
   try {
@@ -86,6 +116,7 @@ async function run() {
       .collection("bookings");
     const userCollection = client.db("my_mern_portal").collection("users");
     const doctorCollection = client.db("my_mern_portal").collection("doctors");
+    const paymentsCollection = client.db("my_mern_portal").collection("payments");
 
     const verifyAdmin = async (req, res, next) => {
       const requester = req.decoded.email;
@@ -245,6 +276,20 @@ async function run() {
       res.send(result);
     });
 
+    app.patch('/booking/:id', verifyJWT, async(req, res)=>{
+      const id = req.params.id;
+      const payment = req.body;
+      const filter = {_id:ObjectId(id)};
+      const updateDoc = {
+        $set: {
+          paid: true,
+          transantionId: payment.transantionId
+        }
+      }
+      const result = await paymentsCollection.insertOne(payment);
+      const updateBooking = await bookingCollection.updateOne(filter, updateDoc);
+      res.send(updateBooking);
+    });
     app.delete("/doctor/:email", verifyJWT, verifyAdmin, async (req, res) => {
       const email = req.params.email;
       const filter = { email: email };
